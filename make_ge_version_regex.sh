@@ -8,13 +8,13 @@
 	Jamf
 	bill@talkingmoose.net
 	https://gist.github.com/2cf20236e665fcd7ec41311d50c89c0e
-	
+
 	Originally posted: April 12, 2020
-	
+
 	Modified: May 6, 2020
 	Changes:
 	Adding support to break long regex strings for Jamf Pro.
-	
+
 	Modified: May 24, 2020
 	Changes:
 	Displaying sequence characters in verbose reporting instead of number.
@@ -25,15 +25,15 @@
 
 	Purpose: Generate a regular expression (regex) string that matches
 	the provided version number or higher.
-	
+
 	Instructions: Run the script in Terminal, supplying a version number
 	string as the first argument:
-	
+
 	e.g. '/path/to/Match Version Number or Higher.bash' 16.17
-	
+
 	Or run the script in Terminal without any argument to use the example
 	version number string within the script.
-	
+
 	Optionally, set verbose to "On" or "Off".
 
 	Except where otherwise noted, this work is licensed under
@@ -41,7 +41,7 @@
 
 	"Perhaps it is the forgetting not the remembering that is the essence
 	of what makes us human. To make sense of the world, we must filter it."
-	
+
 -------------------------------------------------------------------------------
 ABOUT_THIS_SCRIPT
 
@@ -50,6 +50,18 @@ ABOUT_THIS_SCRIPT
 # turn on for step-by-step explanation while building the regex or off to provide only the regex
 verbose="On" # "On" or "Off"
 usingJamf="Yes" # "Yes" or "No"
+
+while getopts ":sn" opt; do
+  case "$opt" in
+    s) verbose="Off" ;;
+    n) usingJamf="No" ;;
+    ?)
+      echo "Invalid option -${OPTARG}"
+      exit 1
+      ;;
+  esac
+done
+shift $((OPTIND - 1))
 
 # from supplied argument in Terminal
 versionString=$1
@@ -74,7 +86,7 @@ if [[ "$versionString" = "" ]]; then
 fi
 
 # ----- functions -------------------------------------------------------------
-	
+
 # enables or disables verbose mode
 function logcomment() {
 
@@ -96,36 +108,32 @@ function evaluateSequence()	{
 	# get the sequence ( e.g. "74" of "74.0.1" )
 	sequence=$( /usr/bin/awk -F "." -v i=$aSequence '{ print $i }' <<< "$adjustedVersionString" )
 	logcomment "Sequence $aSequence is \"$sequence\""
-	
+
 	# show warning if sequence begins with "0"
 	if [[ "$sequence" =~ ^0.+ ]]; then
 		warning="Yes"
 	fi
-	
+
 	# get count of digits in the sequence ( e.g. 2 digits in "74" )
 	digitCount=$( /usr/bin/tr -d '\r\n' <<< "$sequence" | /usr/bin/wc -c | /usr/bin/xargs ) # e.g. 2
 	logcomment "Count of digits in sequence \"$sequence\" is $digitCount"
 	logcomment
-	
+
 	# generate regex for the first number of the sequence rolling over to add another digit ( e.g. 99 > 100 )
 	logcomment "Count of digits in sequence \"$sequence\" may roll over to $((digitCount + 1)) or more digits"
-	buildRegex="$regexPrefix\d{$((digitCount + 1)),}"
+	buildRegex="$regexPrefix\d{$((digitCount + 1))}"
 	logcomment "Regex for $((digitCount + 1)) or more digits is \"$buildRegex\""
-	
-	# add a wildcard to end of string to match everything else
-	logcomment "Wildcard everything else"
-	buildRegex="$buildRegex.*"
-	
+
 	# show complete regex for this digit
 	logcomment "Complete regex is \"$buildRegex\""
 	regex="$regex$buildRegex"
-	
+
 	# show the entire regex as the script progresses through each digit
 	logcomment "Progressive regex: $regex"
 	logcomment
-	
+
 	# ----- process the remaining digits in a sequence ------------------------
-	
+
 	# create array of digits in sequence ( e.g. "7, 4" )
 	digits=()
 	for ((i = 0; i < ${#sequence}; i++)); do
@@ -137,54 +145,52 @@ function evaluateSequence()	{
 	for indexNumber in "${!digits[@]}"
 	do
 		# ----- the number 8 can only roll up to 9 ----------------------------
-		
+
 		if [[ "${digits[$indexNumber]}" -eq 8 ]]; then
 			logcomment "Because digit $((indexNumber + 1 )) in sequence \"$sequence\" is \"8\", roll it to \"9\""
 			buildRegex="9"
-			
-			if [[ $((digitCount - indexNumber - 1 )) -ne 0 ]]; then			
+
+			if [[ $((digitCount - indexNumber - 1 )) -ne 0 ]]; then
 				logcomment "Because remaining count of digits in sequence \"$sequence\" is $((digitCount - indexNumber - 1 )), pad the sequence with $((digitCount - indexNumber - 1 )) more digit(s)"
-				buildRegex="$buildRegex\d{$((digitCount - indexNumber - 1 )),}"
-				logcomment "Regex for $((digitCount - indexNumber - 1 )) more digit(s) is \d{$((digitCount - indexNumber - 1 )),}"
+				buildRegex="$buildRegex\d{$((digitCount - indexNumber - 1 ))}"
+				logcomment "Regex for $((digitCount - indexNumber - 1 )) more digit(s) is \d{$((digitCount - indexNumber - 1 ))}"
 			fi
-			
-			logcomment "Wildcard everything else"
-			buildRegex="$regexPrefix$buildRegex.*"
+
+			buildRegex="$regexPrefix$buildRegex"
 			logcomment "Complete regex is \"$buildRegex\""
-			
+
 			logcomment "Progressive regex: $regex|$buildRegex"
 			regex="$regex|$buildRegex"
 			logcomment
-			
+
 		# ----- anything 0 through 7 will roll up to the next number ----------
-		
+
 		elif [[ "${digits[$indexNumber]}" -lt 8 ]]; then
 			logcomment "Because digit $((indexNumber + 1 )) in sequence \"$sequence\" is \"${digits[$indexNumber]}\", roll it to \"$((${digits[$indexNumber]} + 1))\" or higher"
 			buildRegex="[$((${digits[$indexNumber]} + 1))-9]"
 			logcomment "Regex for $((${digits[$indexNumber]} + 1)) or higher is \"$buildRegex\""
-			
-			if [[ $((digitCount - indexNumber - 1 )) -ne 0 ]]; then			
+
+			if [[ $((digitCount - indexNumber - 1 )) -ne 0 ]]; then
 				logcomment "Because remaining count of digits in sequence \"$sequence\" is $((digitCount - indexNumber - 1 )), pad the sequence with $((digitCount - indexNumber - 1 )) more digit(s)"
-				buildRegex="$buildRegex\d{$((digitCount - indexNumber - 1 )),}"
-				logcomment "Regex for $((digitCount - indexNumber - 1 )) more digit(s) is \d{$((digitCount - indexNumber - 1 )),}"
+				buildRegex="$buildRegex\d{$((digitCount - indexNumber - 1 ))}"
+				logcomment "Regex for $((digitCount - indexNumber - 1 )) more digit(s) is \d{$((digitCount - indexNumber - 1 ))}"
 			fi
-			
-			logcomment "Wildcard everything else"
-			buildRegex="$regexPrefix$buildRegex.*"
+
+			buildRegex="$regexPrefix$buildRegex"
 			logcomment "Complete regex is \"$buildRegex\""
-			
+
 			logcomment "Progressive regex: $regex|$buildRegex"
 			regex="$regex|$buildRegex"
 			logcomment
-		
+
 		# ----- nothing to do if the digit is 9 -------------------------------
 		# ----- (the preceding digit is already rolled up) --------------------
-		
+
 		else
 			logcomment "Because \"Digit $((indexNumber + 1 ))\" in sequence \"$sequence\" is 9, do nothing"
 			logcomment
 		fi
-		
+
 		regexPrefix="$regexPrefix${digits[$indexNumber]}"
 	done
 }
@@ -218,21 +224,21 @@ for ((aSequence=1;aSequence<=$sequenceCount;aSequence++))
 do
 	logcomment "Evaluating sequence $aSequence of $sequenceCount"
 	evaluateSequence
-	
+
 	# resetting variable
 	dividers=""
-	
+
 	# add sequence divider to end of the sequence
 	divider=$( /usr/bin/awk -F "###" -v divider=$(( aSequence + 1 )) '{ print $divider }' <<< "$sequenceDividers" )
-	
+
 	for (( aCharacter=0; aCharacter<${#divider}; aCharacter++ ))
 	do
 		logcomment "Next character is \"${divider:$aCharacter:1}\""
-		
+
 		if [[ "$regexSpecialCharacters" = *"${divider:$aCharacter:1}"* ]]; then
 			dividers="$dividers\\${divider:$aCharacter:1}"
 			logcomment "Escaping \"${divider:$aCharacter:1}\" to create \"\\${divider:$aCharacter:1}\""
-			
+
 		else
 			dividers="$dividers${divider:$aCharacter:1}"
 			logcomment "This character does not need escaping"
@@ -247,7 +253,7 @@ done
 escapedVersionString=""
 for (( aCharacter=0; aCharacter<${#versionString}; aCharacter++ ))
 do
-	
+
 	if [[ "$regexSpecialCharacters" = *"${versionString:$aCharacter:1}"* ]]; then
 		escapedVersionString="$escapedVersionString\\${versionString:$aCharacter:1}"
 	else
@@ -275,9 +281,9 @@ if [[ "$warning" = "Yes" ]]; then
 	echo "==============================================="
 	echo
 fi
-	
+
 # return full regex including start and end of string characters (e.g. ^ and $ )
-regex="^($regex.*)$"
+regex="^($regex)"
 
 # get characterCount of regex
 regexCharacterCount=$( /usr/bin/wc -c <<< "$regex" | /usr/bin/xargs )
@@ -293,22 +299,22 @@ if [[ "$usingJamf" = "Yes" ]] && [[ "$regexCharacterCount" -gt 255 ]]; then
 
 	# get count of characters in generated regex string
 	regexCharacters=${#regex}
-	
+
 	# determine number of regex strings needed, accounting for beginning ^ and ending $ characters
 	jamfStringCount="$((regexCharacters / 254 + 1))"
-	
+
 	# get number of sequences separated by | in regex
 	sequenceCount=$( /usr/bin/awk -F "|" '{ print NF }' <<< "$regex" )
-	
+
 	# divide the count of sequences in half
 	breakDelimiterPosition=$((sequenceCount / jamfStringCount))
-	
+
 	# replace middle | operator(s) with the letter "b"
 	dividedRegex="$regex"
-	
+
 	for (( aBreak=0; aBreak<$jamfStringCount; aBreak++ ))
 	do
-		breakDelimiterPosition=$((breakDelimiterPosition * aBreak + breakDelimiterPosition))	
+		breakDelimiterPosition=$((breakDelimiterPosition * aBreak + breakDelimiterPosition))
 		dividedRegex=$( /usr/bin/sed "s/|/b/$breakDelimiterPosition" <<< "$dividedRegex" )
 	done
 
@@ -327,22 +333,22 @@ if [[ "$usingJamf" = "Yes" ]] && [[ "$regexCharacterCount" -gt 255 ]]; then
 	echo "or            Application Version     matches regex     <Regex 2>     )"
 	echo
 	echo
-	
+
 	# display each Jamf Pro string
 	for (( aBreak=0; aBreak<$jamfStringCount; aBreak++ ))
 	do
 		regexString=$( /usr/bin/awk -F "b" -v divider=$(( aBreak + 1 )) '{ print $divider }' <<< "$dividedRegex" )
-		
+
 		# add beginning of line characters if needed
 		if [[ "$regexString" != "^("* ]]; then
 			regexString="^($regexString"
 		fi
-		
+
 		# add end of line characters if needed
 		if [[ "$regexString" != *")$" ]]; then
 			regexString="$regexString)$"
 		fi
-		
+
 		# display each regex string
 		echo "Regex $((aBreak + 1)):"
 		echo "$regexString"
