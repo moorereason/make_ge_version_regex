@@ -23,6 +23,12 @@
 	Added warning if sequence contains non-standard characters.
 	Accounting for multple Jamf Pro regex strings.
 
+  Modified: May 24, 2020 by Cameron Moore (github.com/moorereason)
+	Changes:
+	Simplify regex to produce 14-25% fewer characters.
+	Add cli options to control verbose and usingJamf.
+	Added unit tests to my fork.
+
 	Purpose: Generate a regular expression (regex) string that matches
 	the provided version number or higher.
 
