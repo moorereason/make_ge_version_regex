@@ -57,16 +57,24 @@ ABOUT_THIS_SCRIPT
 verbose="On" # "On" or "Off"
 usingJamf="Yes" # "Yes" or "No"
 
-while getopts ":sn" opt; do
+function usage() {
+  echo -e "USAGE:\n\t$0 [OPTIONS] VERSION\n\nOPTIONS:\n\t-h: show help\n\t-n: not using jamf\n\t-s: silent mode"
+  exit 0
+}
+
+# process cli options
+while getopts ":hns" opt; do
   case "$opt" in
-    s) verbose="Off" ;;
+    h) usage ;;
     n) usingJamf="No" ;;
+    s) verbose="Off" ;;
     ?)
       echo "Invalid option -${OPTARG}"
       exit 1
       ;;
   esac
 done
+# shift past options in the arguments array
 shift $((OPTIND - 1))
 
 # from supplied argument in Terminal
