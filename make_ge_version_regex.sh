@@ -177,9 +177,28 @@ function evaluateSequence()	{
 			regex="$regex|$buildRegex"
 			logcomment
 
-		# ----- anything 0 through 7 will roll up to the next number ----------
+		# ----- the number 7 can roll up to [89] ------------------------------
 
-		elif [[ "${digits[$indexNumber]}" -lt 8 ]]; then
+		elif [[ "${digits[$indexNumber]}" -eq 7 ]]; then
+			logcomment "Because digit $((indexNumber + 1 )) in sequence \"$sequence\" is \"7\", roll it to \"[89]\""
+			buildRegex="[89]"
+
+			if [[ $((digitCount - indexNumber - 1 )) -ne 0 ]]; then
+				logcomment "Because remaining count of digits in sequence \"$sequence\" is $((digitCount - indexNumber - 1 )), pad the sequence with $((digitCount - indexNumber - 1 )) more digit(s)"
+				buildRegex="$buildRegex\d{$((digitCount - indexNumber - 1 ))}"
+				logcomment "Regex for $((digitCount - indexNumber - 1 )) more digit(s) is \d{$((digitCount - indexNumber - 1 ))}"
+			fi
+
+			buildRegex="$regexPrefix$buildRegex"
+			logcomment "Complete regex is \"$buildRegex\""
+
+			logcomment "Progressive regex: $regex|$buildRegex"
+			regex="$regex|$buildRegex"
+			logcomment
+
+		# ----- anything 0 through 6 will roll up to the next number ----------
+
+		elif [[ "${digits[$indexNumber]}" -lt 7 ]]; then
 			logcomment "Because digit $((indexNumber + 1 )) in sequence \"$sequence\" is \"${digits[$indexNumber]}\", roll it to \"$((${digits[$indexNumber]} + 1))\" or higher"
 			buildRegex="[$((${digits[$indexNumber]} + 1))-9]"
 			logcomment "Regex for $((${digits[$indexNumber]} + 1)) or higher is \"$buildRegex\""
