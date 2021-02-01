@@ -96,7 +96,7 @@ trailing `$` token which saves one character per pattern.
 Since `[8-9]` and `[89]` are equivalent, we can save a single character for each
 `7` in the version string.
 
-#### Comparing a More Complex Versions
+#### Comparing a Complex Version String
 
 Given `7.4.59931.0110`, compare the before and after to see these changes play
 out in the generated patterns:
