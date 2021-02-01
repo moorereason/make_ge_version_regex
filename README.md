@@ -83,10 +83,10 @@ the pattern length for each numbered segment in the version string.
 
 #### Removing `.*` and `$`
 
-The `.*` is superfluous for our needs.  By the time we get to `.*` token
+The `.*` is superfluous for our needs.  By the time we get to the `.*` token
 sequence in the pattern, we already know that we've matched the important bits
 or not.  For each member of the pattern grouping, we can save two characters in
-the pattern length by removing this logic.
+the pattern length by removing this token sequence.
 
 Additionally, removing the `.*` token sequence necessitates removing the
 trailing `$` token which saves one character per pattern.
