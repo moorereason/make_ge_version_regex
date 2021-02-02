@@ -10,7 +10,9 @@ Feedback is welcome!
 ## Improvements
 
 - Optimized, Jamf-unsafe pattern generator with 30-55% reduction in character length.
-- Simplified, Jamf-safe pattern generator with 14-25% reduction in character length.
+- Fallback, Jamf-safe pattern generator with 14-25% reduction in character length.
+  If the optimized generator creates a pattern longer then 255 characters, the
+  script will fallback to the safe generator and split the pattern as needed.
 - Unit tests
 - CLI options
 - No spaces in the script name.
