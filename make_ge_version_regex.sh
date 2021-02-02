@@ -114,9 +114,10 @@ function evaluateSequence()	{
 
 	# ----- process the first digit in a sequence -----------------------------
 
-	# prepend exact characters leading up to the current character under evaluation
+	# if we've processed a previous sequence, begin a new group member with a new
+	# nested grouping
 	if [[ "$regex" != "" ]]; then
-		regex="$regex|"
+		regex="$regex|$regexPrefix("
 	fi
 
 	# get the sequence ( e.g. "74" of "74.0.1" )
@@ -135,7 +136,7 @@ function evaluateSequence()	{
 
 	# generate regex for the first number of the sequence rolling over to add another digit ( e.g. 99 > 100 )
 	logcomment "Count of digits in sequence \"$sequence\" may roll over to $((digitCount + 1)) or more digits"
-	buildRegex="$regexPrefix\d{$((digitCount + 1))}"
+	buildRegex="\d{$((digitCount + 1))}"
 	logcomment "Regex for $((digitCount + 1)) or more digits is \"$buildRegex\""
 
 	# show complete regex for this digit
@@ -154,6 +155,8 @@ function evaluateSequence()	{
 		digits+=(${sequence:$i:1})
 	done
 
+	segmentPrefix=""
+
 	# iterate over each digit of the sequence
 	# for aDigit in ${digits[*]}
 	for indexNumber in "${!digits[@]}"
@@ -170,12 +173,11 @@ function evaluateSequence()	{
 				logcomment "Regex for $((digitCount - indexNumber - 1 )) more digit(s) is \d{$((digitCount - indexNumber - 1 ))}"
 			fi
 
-			buildRegex="$regexPrefix$buildRegex"
+			buildRegex="$segmentPrefix$buildRegex"
 			logcomment "Complete regex is \"$buildRegex\""
 
-			logcomment "Progressive regex: $regex|$buildRegex"
 			regex="$regex|$buildRegex"
-			logcomment
+			logcomment "Progressive regex: $regex"
 
 		# ----- the number 7 can roll up to [89] ------------------------------
 
@@ -189,12 +191,11 @@ function evaluateSequence()	{
 				logcomment "Regex for $((digitCount - indexNumber - 1 )) more digit(s) is \d{$((digitCount - indexNumber - 1 ))}"
 			fi
 
-			buildRegex="$regexPrefix$buildRegex"
+			buildRegex="$segmentPrefix$buildRegex"
 			logcomment "Complete regex is \"$buildRegex\""
 
-			logcomment "Progressive regex: $regex|$buildRegex"
 			regex="$regex|$buildRegex"
-			logcomment
+			logcomment "Progressive regex: $regex"
 
 		# ----- anything 0 through 6 will roll up to the next number ----------
 
@@ -209,22 +210,24 @@ function evaluateSequence()	{
 				logcomment "Regex for $((digitCount - indexNumber - 1 )) more digit(s) is \d{$((digitCount - indexNumber - 1 ))}"
 			fi
 
-			buildRegex="$regexPrefix$buildRegex"
+			buildRegex="$segmentPrefix$buildRegex"
 			logcomment "Complete regex is \"$buildRegex\""
 
-			logcomment "Progressive regex: $regex|$buildRegex"
 			regex="$regex|$buildRegex"
-			logcomment
+			logcomment "Progressive regex: $regex"
 
 		# ----- nothing to do if the digit is 9 -------------------------------
 		# ----- (the preceding digit is already rolled up) --------------------
 
 		else
 			logcomment "Because \"Digit $((indexNumber + 1 ))\" in sequence \"$sequence\" is 9, do nothing"
-			logcomment
 		fi
 
-		regexPrefix="$regexPrefix${digits[$indexNumber]}"
+		regexPrefix="$sequence"
+
+		segmentPrefix=$( /usr/bin/tr -d ' ' <<< "${digits[@]:0:$(($indexNumber+1))}" )
+		logcomment "Save segment prefix \"$segmentPrefix\""
+		logcomment
 	done
 }
 
@@ -278,24 +281,15 @@ do
 		fi
 	done
 	regexPrefix="$regexPrefix$dividers"
-	logcomment "Progressive regex: $regex|$regexPrefix"
-	logcomment
 done
 
-# include original version string at end of regex, escaping special regex characters
-escapedVersionString=""
-for (( aCharacter=0; aCharacter<${#versionString}; aCharacter++ ))
+regex="$regex|$regexPrefix"
+for ((aSequence=1;aSequence<$sequenceCount;aSequence++))
 do
-
-	if [[ "$regexSpecialCharacters" = *"${versionString:$aCharacter:1}"* ]]; then
-		escapedVersionString="$escapedVersionString\\${versionString:$aCharacter:1}"
-	else
-		escapedVersionString="$escapedVersionString${versionString:$aCharacter:1}"
-	fi
+  regex="$regex)"
 done
 
-regex="$regex|$escapedVersionString"
-logcomment "Adding original version string to end of regex as a potential match."
+logcomment "Progressive regex: $regex"
 logcomment
 
 if [[ "$warning" = "Yes" ]]; then
