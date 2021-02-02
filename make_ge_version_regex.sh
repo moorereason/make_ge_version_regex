@@ -114,6 +114,125 @@ function evaluateSequence()	{
 
 	# ----- process the first digit in a sequence -----------------------------
 
+	# prepend exact characters leading up to the current character under evaluation
+	if [[ "$regex" != "" ]]; then
+		regex="$regex|"
+	fi
+
+	# get the sequence ( e.g. "74" of "74.0.1" )
+	sequence=$( /usr/bin/awk -F "." -v i=$aSequence '{ print $i }' <<< "$adjustedVersionString" )
+	logcomment "Sequence $aSequence is \"$sequence\""
+
+	# show warning if sequence begins with "0"
+	if [[ "$sequence" =~ ^0.+ ]]; then
+		warning="Yes"
+	fi
+
+	# get count of digits in the sequence ( e.g. 2 digits in "74" )
+	digitCount=$( /usr/bin/tr -d '\r\n' <<< "$sequence" | /usr/bin/wc -c | /usr/bin/xargs ) # e.g. 2
+	logcomment "Count of digits in sequence \"$sequence\" is $digitCount"
+	logcomment
+
+	# generate regex for the first number of the sequence rolling over to add another digit ( e.g. 99 > 100 )
+	logcomment "Count of digits in sequence \"$sequence\" may roll over to $((digitCount + 1)) or more digits"
+	buildRegex="$regexPrefix\d{$((digitCount + 1))}"
+	logcomment "Regex for $((digitCount + 1)) or more digits is \"$buildRegex\""
+
+	# show complete regex for this digit
+	logcomment "Complete regex is \"$buildRegex\""
+	regex="$regex$buildRegex"
+
+	# show the entire regex as the script progresses through each digit
+	logcomment "Progressive regex: $regex"
+	logcomment
+
+	# ----- process the remaining digits in a sequence ------------------------
+
+	# create array of digits in sequence ( e.g. "7, 4" )
+	digits=()
+	for ((i = 0; i < ${#sequence}; i++)); do
+		digits+=(${sequence:$i:1})
+	done
+
+	# iterate over each digit of the sequence
+	# for aDigit in ${digits[*]}
+	for indexNumber in "${!digits[@]}"
+	do
+		# ----- the number 8 can only roll up to 9 ----------------------------
+
+		if [[ "${digits[$indexNumber]}" -eq 8 ]]; then
+			logcomment "Because digit $((indexNumber + 1 )) in sequence \"$sequence\" is \"8\", roll it to \"9\""
+			buildRegex="9"
+
+			if [[ $((digitCount - indexNumber - 1 )) -ne 0 ]]; then
+				logcomment "Because remaining count of digits in sequence \"$sequence\" is $((digitCount - indexNumber - 1 )), pad the sequence with $((digitCount - indexNumber - 1 )) more digit(s)"
+				buildRegex="$buildRegex\d{$((digitCount - indexNumber - 1 ))}"
+				logcomment "Regex for $((digitCount - indexNumber - 1 )) more digit(s) is \d{$((digitCount - indexNumber - 1 ))}"
+			fi
+
+			buildRegex="$regexPrefix$buildRegex"
+			logcomment "Complete regex is \"$buildRegex\""
+
+			logcomment "Progressive regex: $regex|$buildRegex"
+			regex="$regex|$buildRegex"
+			logcomment
+
+		# ----- the number 7 can roll up to [89] ------------------------------
+
+		elif [[ "${digits[$indexNumber]}" -eq 7 ]]; then
+			logcomment "Because digit $((indexNumber + 1 )) in sequence \"$sequence\" is \"7\", roll it to \"[89]\""
+			buildRegex="[89]"
+
+			if [[ $((digitCount - indexNumber - 1 )) -ne 0 ]]; then
+				logcomment "Because remaining count of digits in sequence \"$sequence\" is $((digitCount - indexNumber - 1 )), pad the sequence with $((digitCount - indexNumber - 1 )) more digit(s)"
+				buildRegex="$buildRegex\d{$((digitCount - indexNumber - 1 ))}"
+				logcomment "Regex for $((digitCount - indexNumber - 1 )) more digit(s) is \d{$((digitCount - indexNumber - 1 ))}"
+			fi
+
+			buildRegex="$regexPrefix$buildRegex"
+			logcomment "Complete regex is \"$buildRegex\""
+
+			logcomment "Progressive regex: $regex|$buildRegex"
+			regex="$regex|$buildRegex"
+			logcomment
+
+		# ----- anything 0 through 6 will roll up to the next number ----------
+
+		elif [[ "${digits[$indexNumber]}" -lt 7 ]]; then
+			logcomment "Because digit $((indexNumber + 1 )) in sequence \"$sequence\" is \"${digits[$indexNumber]}\", roll it to \"$((${digits[$indexNumber]} + 1))\" or higher"
+			buildRegex="[$((${digits[$indexNumber]} + 1))-9]"
+			logcomment "Regex for $((${digits[$indexNumber]} + 1)) or higher is \"$buildRegex\""
+
+			if [[ $((digitCount - indexNumber - 1 )) -ne 0 ]]; then
+				logcomment "Because remaining count of digits in sequence \"$sequence\" is $((digitCount - indexNumber - 1 )), pad the sequence with $((digitCount - indexNumber - 1 )) more digit(s)"
+				buildRegex="$buildRegex\d{$((digitCount - indexNumber - 1 ))}"
+				logcomment "Regex for $((digitCount - indexNumber - 1 )) more digit(s) is \d{$((digitCount - indexNumber - 1 ))}"
+			fi
+
+			buildRegex="$regexPrefix$buildRegex"
+			logcomment "Complete regex is \"$buildRegex\""
+
+			logcomment "Progressive regex: $regex|$buildRegex"
+			regex="$regex|$buildRegex"
+			logcomment
+
+		# ----- nothing to do if the digit is 9 -------------------------------
+		# ----- (the preceding digit is already rolled up) --------------------
+
+		else
+			logcomment "Because \"Digit $((indexNumber + 1 ))\" in sequence \"$sequence\" is 9, do nothing"
+			logcomment
+		fi
+
+		regexPrefix="$regexPrefix${digits[$indexNumber]}"
+	done
+}
+
+# processes a digit within a sequence
+function evaluateSequenceOptimized()	{
+
+	# ----- process the first digit in a sequence -----------------------------
+
 	# if we've processed a previous sequence, begin a new group member with a new
 	# nested grouping
 	if [[ "$regex" != "" ]]; then
@@ -233,6 +352,66 @@ function evaluateSequence()	{
 
 # ----- run the script --------------------------------------------------------
 
+function generatePattern() {
+  regex=""
+
+  # used to track unchanged digits to the left of the current digit being evaluated
+  regexPrefix=""
+
+  # evaluate the version string
+  for ((aSequence=1;aSequence<=$sequenceCount;aSequence++))
+  do
+    logcomment "Evaluating sequence $aSequence of $sequenceCount"
+    if [[ "$fallback" -eq 0 ]]; then
+      evaluateSequenceOptimized
+    else
+      evaluateSequence
+    fi
+
+    # resetting variable
+    dividers=""
+
+    # add sequence divider to end of the sequence
+    divider=$( /usr/bin/awk -F "###" -v divider=$(( aSequence + 1 )) '{ print $divider }' <<< "$sequenceDividers" )
+
+    for (( aCharacter=0; aCharacter<${#divider}; aCharacter++ ))
+    do
+      logcomment "Next character is \"${divider:$aCharacter:1}\""
+
+      if [[ "$regexSpecialCharacters" = *"${divider:$aCharacter:1}"* ]]; then
+        dividers="$dividers\\${divider:$aCharacter:1}"
+        logcomment "Escaping \"${divider:$aCharacter:1}\" to create \"\\${divider:$aCharacter:1}\""
+
+      else
+        dividers="$dividers${divider:$aCharacter:1}"
+        logcomment "This character does not need escaping"
+      fi
+    done
+    regexPrefix="$regexPrefix$dividers"
+  done
+
+  regex="$regex|$regexPrefix"
+
+  if [[ "$fallback" -eq 0 ]]; then
+    # Close off all nested groups (excluding the main outer group)
+    for ((aSequence=1;aSequence<$sequenceCount;aSequence++))
+    do
+      regex="$regex)"
+    done
+  fi
+
+  logcomment "Progressive regex: $regex"
+  logcomment
+
+  # return full regex including start and end of string characters (e.g. ^ and $ )
+  regex="^($regex)"
+}
+
+# ----- run the script --------------------------------------------------------
+
+# fallback is 1 when using the non-grouping pattern generator for jamf
+fallback=0
+
 # verify the version string to the user
 logcomment "Version string is $versionString"
 
@@ -252,45 +431,20 @@ logcomment
 # 14 special regex characters that may appear as sequence dividers that will need escaping
 regexSpecialCharacters="\&$.|?*+()[]{}"
 
-# used to track unchanged digits to the left of the current digit being evaluated
-regexPrefix=""
+# Generate the optimized pattern (fallback=0)
+generatePattern
 
-# evaluate the version string
-for ((aSequence=1;aSequence<=$sequenceCount;aSequence++))
-do
-	logcomment "Evaluating sequence $aSequence of $sequenceCount"
-	evaluateSequence
+if [[ "$usingJamf" = "Yes" ]] && [[ "$fallback" -eq 0 ]] && [[ "${#regex}" -gt 255 ]]; then
+  logcomment "!!!"
+  logcomment "!!! Optimized pattern too long for jamf ($((${#regex})) > 255)"
+  logcomment "!!!"
+  logcomment "!!! Rebuilding with non-grouping pattern generator..."
+  logcomment "!!!"
+  logcomment
 
-	# resetting variable
-	dividers=""
-
-	# add sequence divider to end of the sequence
-	divider=$( /usr/bin/awk -F "###" -v divider=$(( aSequence + 1 )) '{ print $divider }' <<< "$sequenceDividers" )
-
-	for (( aCharacter=0; aCharacter<${#divider}; aCharacter++ ))
-	do
-		logcomment "Next character is \"${divider:$aCharacter:1}\""
-
-		if [[ "$regexSpecialCharacters" = *"${divider:$aCharacter:1}"* ]]; then
-			dividers="$dividers\\${divider:$aCharacter:1}"
-			logcomment "Escaping \"${divider:$aCharacter:1}\" to create \"\\${divider:$aCharacter:1}\""
-
-		else
-			dividers="$dividers${divider:$aCharacter:1}"
-			logcomment "This character does not need escaping"
-		fi
-	done
-	regexPrefix="$regexPrefix$dividers"
-done
-
-regex="$regex|$regexPrefix"
-for ((aSequence=1;aSequence<$sequenceCount;aSequence++))
-do
-  regex="$regex)"
-done
-
-logcomment "Progressive regex: $regex"
-logcomment
+  fallback=1
+  generatePattern
+fi
 
 if [[ "$warning" = "Yes" ]]; then
 	echo
@@ -308,9 +462,6 @@ if [[ "$warning" = "Yes" ]]; then
 	echo "==============================================="
 	echo
 fi
-
-# return full regex including start and end of string characters (e.g. ^ and $ )
-regex="^($regex)"
 
 # get characterCount of regex
 regexCharacterCount=$( /usr/bin/wc -c <<< "$regex" | /usr/bin/xargs )
