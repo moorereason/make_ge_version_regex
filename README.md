@@ -106,7 +106,7 @@ out in the generated patterns:
 ## Regular Expression Changes to the Optimized Generator
 
 The optimized generator has all of the features of the safe generator plus
-nested groupings at each version string segments to avoid repetition of previous
+nested groupings at each version string segment to avoid repetition of previous
 segments.  The downside of this approach is that it can't be split up for jamf
 if the pattern exceeds 255 characters.
 
@@ -131,8 +131,7 @@ repeat the previous segments.
 
 Special thanks to **Mike Dowler** for
 [a comment in a Jamf Nation thread](https://www.jamf.com/jamf-nation/feature-requests/10085/allow-regex-longer-than-255-characters-in-smart-group-criteria#responseChild30028)
-for this idea.  I figured there was a way to do this but hadn't taken the time
-to think through it.
+for this idea.
 
 #### Comparing a Complex Version String (Again)
 
