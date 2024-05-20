@@ -493,7 +493,7 @@ if [[ "$usingJamf" = "Yes" ]] && [[ "$regexCharacterCount" -gt 255 ]]; then
 	for (( aBreak=0; aBreak<$jamfStringCount; aBreak++ ))
 	do
 		breakDelimiterPosition=$((breakDelimiterPosition * aBreak + breakDelimiterPosition))
-		dividedRegex=$( /usr/bin/sed "s/|/b/$breakDelimiterPosition" <<< "$dividedRegex" )
+		dividedRegex=$( /usr/bin/sed "s/|/±/$breakDelimiterPosition" <<< "$dividedRegex" )
 	done
 
 	# print Jamf Pro instructions and both regex strings
@@ -515,7 +515,7 @@ if [[ "$usingJamf" = "Yes" ]] && [[ "$regexCharacterCount" -gt 255 ]]; then
 	# display each Jamf Pro string
 	for (( aBreak=0; aBreak<$jamfStringCount; aBreak++ ))
 	do
-		regexString=$( /usr/bin/awk -F "b" -v divider=$(( aBreak + 1 )) '{ print $divider }' <<< "$dividedRegex" )
+		regexString=$( /usr/bin/awk -F "±" -v divider=$(( aBreak + 1 )) '{ print $divider }' <<< "$dividedRegex" )
 
 		# add beginning of line characters if needed
 		if [[ "$regexString" != "^("* ]]; then
