@@ -132,7 +132,7 @@ version string segment is turned into a nested group to keep from having to
 repeat the previous segments.
 
 Special thanks to **Mike Dowler** for
-[a comment in a Jamf Nation thread](https://www.jamf.com/jamf-nation/feature-requests/10085/allow-regex-longer-than-255-characters-in-smart-group-criteria#responseChild30028)
+[a comment in a Jamf Nation thread](https://ideas.jamf.com/ideas/JN-I-16154)
 for this idea.
 
 #### Comparing a Complex Version String (Again)
